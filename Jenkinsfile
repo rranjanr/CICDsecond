@@ -13,46 +13,54 @@ pipeline {
             }
         }
 
-    stage('Test') {
-    steps {
-        script {
-            docker.build("test-image")
-            sh 'docker run -d --rm --name test_flask --network jenkins_net test-image'
-            sleep 5
-
-            // Check if container is still running
-            def running = sh(script: 'docker ps -q -f name=test_flask', returnStdout: true).trim()
-            if (!running) {
-                error "test_flask container exited early. Likely app.py has errors."
+        stage('Create Network') {
+            steps {
+                script {
+                    sh '''
+                        docker network ls | grep jenkins_net || docker network create jenkins_net
+                    '''
+                }
             }
-
-            // Now do the curl check
-            sh 'docker run --rm --network jenkins_net curlimages/curl:latest curl -f http://test_flask:7000'
-
-            // Clean up
-            sh 'docker stop test_flask || true'
         }
-    }
-}
 
-stage('Cleanup') {
-    steps {
-        script {
-            // Remove dangling images
-            sh 'docker image prune -f'
+        stage('Test') {
+            steps {
+                script {
+                    docker.build("test-image")
 
- 
+                    try {
+                        sh 'docker run -d --name test_flask --network jenkins_net test-image'
+                        sleep 5
+
+                        def running = sh(script: 'docker ps -q -f name=test_flask', returnStdout: true).trim()
+                        if (!running) {
+                            error "test_flask container exited early. Likely app.py has errors."
+                        }
+
+                        // Health check via curl
+                        sh 'docker run --rm --network jenkins_net curlimages/curl:latest curl -f http://test_flask:7000'
+                    } finally {
+                        // Always stop test container
+                        sh 'docker stop test_flask || true'
+                    }
+                }
+            }
         }
-    }
-}
 
-        
+        stage('Cleanup') {
+            steps {
+                script {
+                    sh 'docker image prune -f'
+                }
+            }
+        }
+
         stage('Build & Push') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}")
+                    def image = docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
-                        docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}").push()
+                        image.push()
                     }
                 }
             }
@@ -67,4 +75,3 @@ stage('Cleanup') {
         }
     }
 }
-
