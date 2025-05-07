@@ -26,23 +26,34 @@ pipeline {
         stage('Test') {
             steps {
                 script {
+                    // 🔁 Ensure no leftover container before build
+                    sh 'docker rm -f test_flask || true'
+
                     docker.build("test-image")
 
                     try {
+                        // 🐳 Run container for testing
                         sh 'docker run -d --name test_flask --network jenkins_net test-image'
                         sleep 5
 
+                        // ✅ Verify container is running
                         def running = sh(script: 'docker ps -q -f name=test_flask', returnStdout: true).trim()
                         if (!running) {
                             error "test_flask container exited early. Likely app.py has errors."
                         }
 
-                        // Health check via curl
+                        // 🌐 Health check via curl
                         sh 'docker run --rm --network jenkins_net curlimages/curl:latest curl -f http://test_flask:7000'
                     } finally {
-                        // Always stop test container
+                        // 🧹 Clean up after test
                         sh 'docker stop test_flask || true'
                     }
+                }
+            }
+            post {
+                always {
+                    // 🔁 Ensure container is removed in all outcomes
+                    sh 'docker rm -f test_flask || true'
                 }
             }
         }
