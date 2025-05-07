@@ -1,0 +1,30 @@
+---
+- name: Deploy the latest Flask app
+  hosts: localhost
+  tasks:
+    - name: Stop the running container
+      docker_container:
+        name: flask
+        state: stopped
+
+    - name: Remove the stopped container
+      docker_container:
+        name: flask
+        state: absent
+
+    - name: Pull the latest image from Docker Hub
+      docker_image:
+        name: apurwasingh/flask
+        tag: latest
+        source: pull
+
+    - name: Run the container with the latest image
+      docker_container:
+        name: flask
+        image: apurwasingh/flask:latest
+        state: started
+        detach: yes
+        tty: yes
+        ports:
+          - "8001:7000"
+        restart_policy: always
