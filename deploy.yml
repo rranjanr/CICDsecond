@@ -14,14 +14,14 @@
 
     - name: Pull the latest image from Docker Hub
       docker_image:
-        name: apurwasingh/flask
+        name: rranzan2001/flask
         tag: latest
         source: pull
 
     - name: Run the container with the latest image
       docker_container:
         name: flask
-        image: apurwasingh/flask:latest
+        image: rranzan2001/flask:latest
         state: started
         detach: yes
         tty: yes
