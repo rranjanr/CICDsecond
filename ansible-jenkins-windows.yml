@@ -1,7 +1,7 @@
 services:
   ansible:
     container_name: ansible
-    image: rranzan2001/cansible
+    image: apurwasingh/cansible
     restart: unless-stopped
     command: tail -f /dev/null
     volumes:
@@ -11,7 +11,7 @@ services:
 
   jenkins:
     container_name: jenkins
-    image: rranzan2001/djentle
+    image: apurwasingh/djentle
     restart: unless-stopped
     ports:
       - "8080:8080"
